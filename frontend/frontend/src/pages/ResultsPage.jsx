@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import useWindowWidth from '../hooks/useWindowWidth'
 import Navbar from '../components/Navbar'
+import { API_BASE_URL } from '../api'
 
 export default function ResultsPage() {
   const navigate = useNavigate()
@@ -32,7 +33,7 @@ export default function ResultsPage() {
     }
 
     // Token exists — verify it works
-    fetch('http://localhost:8080/api/dashboard', {
+    fetch(`${API_BASE_URL}/dashboard`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

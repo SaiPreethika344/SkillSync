@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { API_BASE_URL } from '../api'
 
 export default function OAuth2CallbackPage() {
   const navigate = useNavigate()
@@ -21,7 +22,7 @@ export default function OAuth2CallbackPage() {
         localStorage.removeItem('pendingField')
         localStorage.removeItem('pendingSkills')
         const skills = JSON.parse(pendingSkills)
-        fetch('http://localhost:8080/api/analysis/run', {
+        fetch(`${API_BASE_URL}/analysis/run`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState, useRef } from 'react'
 import useWindowWidth from '../hooks/useWindowWidth'
-import { getDashboard, getRoadmap, completeStep, undoStep } from '../api'
+import { API_BASE_URL, getDashboard, getRoadmap, completeStep, undoStep } from '../api'
 import ChatBot from '../components/ChatBot'
 
 function RoadmapStep({ step, onComplete, onUndo, topCareer }) {
@@ -24,7 +24,7 @@ function RoadmapStep({ step, onComplete, onUndo, topCareer }) {
     if (!expanded && !aiDetails) {
       setLoadingAi(true)
       try {
-        const res = await fetch('http://localhost:8080/api/chat', {
+        const res = await fetch(`${API_BASE_URL}/chat`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ export default function DashboardPage() {
     }
     setLoadingRoadmap(true)
     const token = localStorage.getItem('token')
-    fetch('http://localhost:8080/api/chat', {
+    fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
