@@ -8,10 +8,11 @@ from conftest import wait_for
 def open_path(driver, base_url, path):
     driver.get(f"{base_url}{path}")
     wait_for(lambda: driver.execute_script("return document.readyState") in {"interactive", "complete"})
+    wait_for(lambda: driver.find_element(By.TAG_NAME, "body").text.strip())
 
 
 def visible_text(driver):
-    return driver.find_element(By.TAG_NAME, "body").text
+    return wait_for(lambda: driver.find_element(By.TAG_NAME, "body").text.strip())
 
 
 def click_text(driver, text):
