@@ -5,54 +5,129 @@ on:
     branches: ["**"]
   pull_request:
     branches: ["**"]
+  workflow_dispatch:
+
+concurrency:
+  group: selenium-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22.x"
+  PYTHON_VERSION: "3.12"
+  E2E_HOST: "127.0.0.1"
+  E2E_PORT: "5173"
 
 jobs:
   selenium:
+    name: Selenium browser tests
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: frontend/frontend
-        run: npm ci
-
-      - name: Build frontend
-        working-directory: frontend/frontend
-        run: npm run build
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: e2e/requirements.txt
+
+      - name: Detect frontend project
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FRONTEND_DIR=""
+          for candidate in frontend/frontend frontend .; do
+            if [[ -f "$candidate/package.json" ]] && grep -q '"vite"' "$candidate/package.json"; then
+              FRONTEND_DIR="$candidate"
+              break
+            fi
+          done
+
+          if [[ -z "$FRONTEND_DIR" ]]; then
+            echo "Could not find a Vite frontend package.json." >&2
+            exit 1
+          fi
+
+          if [[ -f "$FRONTEND_DIR/package-lock.json" ]]; then
+            INSTALL_COMMAND="npm ci"
+          else
+            INSTALL_COMMAND="npm install"
+          fi
+
+          {
+            echo "FRONTEND_DIR=$FRONTEND_DIR"
+            echo "FRONTEND_INSTALL_COMMAND=$INSTALL_COMMAND"
+            echo "E2E_BASE_URL=http://${E2E_HOST}:${E2E_PORT}"
+          } >> "$GITHUB_ENV"
+
+          echo "Frontend directory: $FRONTEND_DIR"
+          echo "Install command: $INSTALL_COMMAND"
+
+      - name: Show environment
+        shell: bash
+        run: |
+          node --version
+          npm --version
+          python --version
+          google-chrome --version || true
+          chromedriver --version || true
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$FRONTEND_DIR"
+          $FRONTEND_INSTALL_COMMAND
+
+      - name: Build frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$FRONTEND_DIR"
+          npm run build
 
       - name: Install Selenium test dependencies
         run: python -m pip install -r e2e/requirements.txt
 
       - name: Start frontend
-        working-directory: frontend/frontend
-        run: npm run dev -- --host 127.0.0.1 --port 5173 > ../../vite.log 2>&1 &
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$FRONTEND_DIR"
+          nohup npm run dev -- --host "$E2E_HOST" --port "$E2E_PORT" > "$GITHUB_WORKSPACE/vite.log" 2>&1 &
+          echo $! > "$GITHUB_WORKSPACE/vite.pid"
 
       - name: Wait for frontend
-        run: python e2e/wait_for_url.py http://127.0.0.1:5173 90
+        run: python e2e/wait_for_url.py "$E2E_BASE_URL" 120
 
       - name: Run Selenium tests
         working-directory: e2e
-        env:
-          E2E_BASE_URL: http://127.0.0.1:5173
         run: pytest -q
+
+      - name: Stop frontend
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f vite.pid ]]; then
+            kill "$(cat vite.pid)" 2>/dev/null || true
+          fi
 
       - name: Upload Vite log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: vite-log
           path: vite.log
+          if-no-files-found: ignore
