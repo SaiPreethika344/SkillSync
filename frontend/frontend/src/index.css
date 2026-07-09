@@ -1,0 +1,69 @@
+* { box-sizing: border-box; }
+* { margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  overflow-x: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: linear-gradient(135deg, #f8f9ff 0%, #f0f5ff 50%, #f8f9ff 100%);
+  background-size: 200% 200%;
+  animation: bodyGradientShift 16s ease infinite;
+}
+
+#root {
+  animation: pageFadeIn 0.5s ease;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #185FA5 #f0f0f0;
+}
+
+button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+button:hover {
+  transform: scale(1.02);
+}
+
+.premium-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.premium-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+}
+
+.chat-pulse-ring {
+  animation: subtleBluePulse 3s ease-out infinite;
+}
+
+.chat-trigger:hover .chat-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bodyGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes subtleBluePulse {
+  0%, 75%, 100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  12% {
+    transform: scale(1.5);
+    opacity: 0.25;
+  }
+}

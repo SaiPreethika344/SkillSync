@@ -49,14 +49,25 @@ jobs:
 
           FRONTEND_DIR=""
           for candidate in frontend/frontend frontend .; do
-            if [[ -f "$candidate/package.json" ]] && grep -q '"vite"' "$candidate/package.json"; then
+            if [[ ! -f "$candidate/package.json" ]]; then
+              continue
+            fi
+
+            if compgen -G "$candidate/vite.config.*" > /dev/null; then
+              FRONTEND_DIR="$candidate"
+              break
+            fi
+
+            if grep -Eq '"(dev|build)"[[:space:]]*:[[:space:]]*"[^"]*vite' "$candidate/package.json"; then
               FRONTEND_DIR="$candidate"
               break
             fi
           done
 
           if [[ -z "$FRONTEND_DIR" ]]; then
-            echo "Could not find a Vite frontend package.json." >&2
+            echo "Could not find a Vite frontend project." >&2
+            echo "Checked: frontend/frontend, frontend, and repository root." >&2
+            echo "If your frontend is under frontend/frontend, make sure it is committed as normal files, not a broken git submodule." >&2
             exit 1
           fi
 
