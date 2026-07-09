@@ -125,6 +125,8 @@ jobs:
 
       - name: Run Selenium tests
         working-directory: e2e
+        env:
+          SELENIUM_REPORT_PATH: reports/selenium-report.xlsx
         run: pytest -q
 
       - name: Stop frontend
@@ -134,6 +136,14 @@ jobs:
           if [[ -f vite.pid ]]; then
             kill "$(cat vite.pid)" 2>/dev/null || true
           fi
+
+      - name: Upload Selenium Excel report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: selenium-excel-report
+          path: e2e/reports/selenium-report.xlsx
+          if-no-files-found: warn
 
       - name: Upload Vite log
         if: always()
