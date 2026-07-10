@@ -11,7 +11,7 @@ import OAuth2CallbackPage from './pages/OAuth2CallbackPage'
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/SkillSync">
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
