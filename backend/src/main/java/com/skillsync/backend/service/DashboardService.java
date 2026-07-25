@@ -42,7 +42,15 @@ public class DashboardService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         Analysis latest = analysisRepository.findFirstByUserIdOrderByCreatedAtDesc(user.getId())
-                .orElseThrow(() -> new IllegalArgumentException("No analysis found for user"));
+                .orElse(null);
+        if (latest == null) {
+            DashboardResponseDto empty = new DashboardResponseDto();
+            empty.setUserName(user.getName());
+            empty.setTopCareerMatchScore(0);
+            empty.setTopCareerMatches(List.of());
+            empty.setSkillStrengths(List.of());
+            return empty;
+        }
 
         AnalysisResultDto result = readResult(latest.getResultJson());
         List<String> userSkills = readSkills(latest.getSkillsJson());

@@ -123,6 +123,7 @@ export default function DashboardPage() {
   const [selectedCareer, setSelectedCareer] = useState(null)
   const [dynamicRoadmap, setDynamicRoadmap] = useState(null)
   const [loadingRoadmap, setLoadingRoadmap] = useState(false)
+  const [fetchError, setFetchError] = useState(null)
   const roadmapRef = useRef(null)
   const width = useWindowWidth()
   const isMobile = width < 768
@@ -130,14 +131,21 @@ export default function DashboardPage() {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { navigate('/login'); return }
+    setFetchError(null)
     Promise.all([getDashboard(), getRoadmap()])
       .then(([dashData, roadmapData]) => {
         setDash(dashData)
         setRoadmap(Array.isArray(roadmapData) ? roadmapData : [])
       })
-      .catch(() => navigate('/login'))
+      .catch((err) => {
+        if (err.status === 401) {
+          navigate('/login')
+          return
+        }
+        setFetchError('Could not load your dashboard. Please try again.')
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }, [navigate])
 
   useEffect(() => {
     if (dash?.topCareerMatches && dash.topCareerMatches.length > 0 && !selectedCareer) {
@@ -209,7 +217,21 @@ export default function DashboardPage() {
     </div>
   )
 
-  if (!dash) return (
+  if (fetchError) return (
+    <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f9f9f9'}}>
+      <div style={{textAlign:'center', maxWidth:360, padding:24}}>
+        <p style={{color:'#666', fontSize:16, marginBottom:16}}>{fetchError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{background:'#185FA5', color:'white', border:'none', padding:'12px 24px', borderRadius:12, fontSize:14, fontWeight:600, cursor:'pointer'}}>
+          Retry
+        </button>
+      </div>
+    </div>
+  )
+
+  const hasAnalysis = dash?.topCareerMatches?.length > 0
+  if (!hasAnalysis) return (
     <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f9f9f9'}}>
       <div style={{textAlign:'center'}}>
         <p style={{color:'#666', fontSize:16, marginBottom:16}}>No analysis found yet.</p>

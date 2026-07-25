@@ -13,6 +13,15 @@ const headers = () => ({
   ...getAuthHeaders()
 })
 
+const parseJsonResponse = (response) => {
+  if (!response.ok) {
+    const error = new Error(`HTTP error ${response.status}`)
+    error.status = response.status
+    throw error
+  }
+  return response.json()
+}
+
 export const registerUser = (name, email, password) =>
   fetch(`${API_BASE_URL}/auth/register`, {
     method: 'POST',
@@ -45,10 +54,10 @@ export const uploadResume = (file) => {
 }
 
 export const getDashboard = () =>
-  fetch(`${API_BASE_URL}/dashboard`, { headers: headers() }).then(r => r.json())
+  fetch(`${API_BASE_URL}/dashboard`, { headers: headers() }).then(parseJsonResponse)
 
 export const getRoadmap = () =>
-  fetch(`${API_BASE_URL}/roadmap`, { headers: headers() }).then(r => r.json())
+  fetch(`${API_BASE_URL}/roadmap`, { headers: headers() }).then(parseJsonResponse)
 
 export const completeStep = (id) =>
   fetch(`${API_BASE_URL}/roadmap/${id}/complete`, {
