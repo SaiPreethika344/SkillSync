@@ -11,6 +11,8 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataAccessException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.mail.MailException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -36,6 +38,7 @@ public class ForgotPasswordController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/forgot-password")
+    @Transactional
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
         String email = body.get("email");
         Optional<User> user = userRepository.findByEmail(email);
@@ -94,5 +97,11 @@ public class ForgotPasswordController {
     public ResponseEntity<?> handleMailException(MailException ex) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(Map.of("message", "Email service is currently unavailable. Please try again later."));
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<?> handleDataAccessException(DataAccessException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Database error: " + ex.getMessage()));
     }
 }
