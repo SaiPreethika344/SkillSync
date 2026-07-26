@@ -124,6 +124,7 @@ export default function DashboardPage() {
   const [dynamicRoadmap, setDynamicRoadmap] = useState(null)
   const [loadingRoadmap, setLoadingRoadmap] = useState(false)
   const [fetchError, setFetchError] = useState(null)
+  const [dynamicCompletedIds, setDynamicCompletedIds] = useState(() => new Set())
   const roadmapRef = useRef(null)
   const width = useWindowWidth()
   const isMobile = width < 768
@@ -152,6 +153,10 @@ export default function DashboardPage() {
       setSelectedCareer(dash.topCareerMatches[0])
     }
   }, [dash])
+
+  useEffect(() => {
+    setDynamicCompletedIds(new Set())
+  }, [selectedCareer?.careerTitle])
 
   useEffect(() => {
     if (!selectedCareer) return
@@ -194,18 +199,39 @@ export default function DashboardPage() {
   }, [selectedCareer])
 
   const handleComplete = async (id) => {
+    const idStr = String(id)
+    if (idStr.startsWith('dynamic')) {
+      setDynamicCompletedIds(prev => new Set(prev).add(idStr))
+      return
+    }
     await completeStep(id)
     setRoadmap(prev => prev.map(r => r.id === id ? {...r, isComplete: true} : r))
   }
 
   const handleUndo = async (id) => {
+    const idStr = String(id)
+    if (idStr.startsWith('dynamic')) {
+      setDynamicCompletedIds(prev => {
+        const next = new Set(prev)
+        next.delete(idStr)
+        return next
+      })
+      return
+    }
     await undoStep(id)
     setRoadmap(prev => prev.map(r => r.id === id ? { ...r, isComplete: false } : r))
   }
 
   const currentRoadmap = dynamicRoadmap || roadmap
-  const completedSteps = currentRoadmap.filter(r => r.isComplete).length
-  const totalSteps = currentRoadmap.length
+  const roadmapStepsForDisplay = currentRoadmap.map(r => {
+    const idStr = String(r.id)
+    const isComplete = idStr.startsWith('dynamic')
+      ? dynamicCompletedIds.has(idStr)
+      : r.isComplete
+    return { ...r, isComplete }
+  })
+  const completedSteps = roadmapStepsForDisplay.filter(r => r.isComplete).length
+  const totalSteps = roadmapStepsForDisplay.length
   const progressPercent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0
   const radius = 45
   const circumference = 2 * Math.PI * radius
@@ -356,7 +382,7 @@ export default function DashboardPage() {
                 </div>
                 <div style={{background:'white', borderRadius:14, border:'1px solid #f0f0f0', padding:20}}>
                   <p style={{fontSize:12, color:'#999', marginBottom:4}}>Roadmap steps</p>
-                  <p style={{fontSize:30, fontWeight:700, color:'#111'}}>{roadmap.length}</p>
+                  <p style={{fontSize:30, fontWeight:700, color:'#111'}}>{totalSteps}</p>
                   <p style={{fontSize:12, color:'#999', marginTop:4}}>{completedSteps} completed</p>
                 </div>
               </div>
@@ -451,12 +477,12 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div style={{display:'flex', flexDirection:'column', gap:10}}>
-                    {currentRoadmap.map(r => (
+                    {roadmapStepsForDisplay.map(r => (
                       <RoadmapStep
                         key={r.id}
                         step={r}
-                        onComplete={r.id?.toString().startsWith('dynamic') ? () => {} : handleComplete}
-                        onUndo={r.id?.toString().startsWith('dynamic') ? () => {} : handleUndo}
+                        onComplete={handleComplete}
+                        onUndo={handleUndo}
                         topCareer={selectedCareer?.careerTitle || careers[0]?.careerTitle || 'your target career'}
                       />
                     ))}

@@ -7,11 +7,14 @@ import SignupPage from './pages/SignupPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import DashboardPage from './pages/DashboardPage'
 import PricingPage from './pages/PricingPage'
-import OAuth2CallbackPage from './pages/OAuth2CallbackPage'
+
+const basename = import.meta.env.BASE_URL === '/'
+  ? undefined
+  : import.meta.env.BASE_URL.replace(/\/$/, '')
 
 function App() {
   return (
-    <BrowserRouter basename="/SkillSync">
+    <BrowserRouter basename={basename}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
@@ -21,7 +24,6 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />
       </Routes>
     </BrowserRouter>
   )
