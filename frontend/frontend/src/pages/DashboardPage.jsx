@@ -140,6 +140,8 @@ export default function DashboardPage() {
       })
       .catch((err) => {
         if (err.status === 401) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('isPremium')
           navigate('/login')
           return
         }
@@ -372,8 +374,8 @@ export default function DashboardPage() {
               <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:16, marginBottom:24}}>
                 <div style={{background:'white', borderRadius:14, border:'1px solid #f0f0f0', padding:20}}>
                   <p style={{fontSize:12, color:'#999', marginBottom:4}}>Career match score</p>
-                  <p style={{fontSize:30, fontWeight:700, color:'#111'}}>{dash.topCareerMatchScore || 0}%</p>
-                  <p style={{fontSize:12, color:'#999', marginTop:4}}>{careers[0]?.careerTitle || 'Run an analysis'}</p>
+                  <p style={{fontSize:30, fontWeight:700, color:'#111'}}>{selectedCareer?.matchPercentage ?? dash.topCareerMatchScore ?? 0}%</p>
+                  <p style={{fontSize:12, color:'#999', marginTop:4}}>{selectedCareer?.careerTitle || 'Run an analysis'}</p>
                 </div>
                 <div style={{background:'white', borderRadius:14, border:'1px solid #f0f0f0', padding:20}}>
                   <p style={{fontSize:12, color:'#999', marginBottom:4}}>Skills identified</p>
