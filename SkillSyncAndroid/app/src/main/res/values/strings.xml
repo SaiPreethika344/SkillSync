@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">SkillSync AI</string>
+    <string name="fill_all_fields">Please fill in all required fields.</string>
+    <string name="password_mismatch">Passwords do not match.</string>
+    <string name="network_error">Unable to reach the backend right now.</string>
+    <string name="login_success">Signed in successfully.</string>
+    <string name="login_failed">Login failed. Please check your credentials.</string>
+    <string name="signup_success">Account created successfully.</string>
+    <string name="signup_failed">Unable to create the account. Please try again.</string>
+    <string name="logging_in">Logging in…</string>
+    <string name="login">Log in</string>
+    <string name="creating_account">Creating account…</string>
+    <string name="create_account">Create account</string>
+    <string name="enter_prompt">Please describe your skills before analyzing.</string>
+    <string name="analyzing">Analyzing…</string>
+    <string name="analyze">Analyze</string>
+    <string name="analysis_complete">Analysis complete</string>
+    <string name="results_summary">Here is your AI-generated skill summary.</string>
+    <string name="analysis_placeholder">Your analysis will appear here.</string>
+    <string name="analysis_failed">We could not generate a result right now.</string>
+    <string name="dashboard_placeholder">Your personalized dashboard will appear here.</string>
+    <string name="welcome_back">Welcome back, %1$s</string>
+</resources>
