@@ -17,7 +17,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--base-url",
         action="store",
-        default=os.getenv("E2E_BASE_URL", "http://127.0.0.1:5173"),
+        default=os.getenv("E2E_BASE_URL", "http://127.0.0.1:5173/SkillSync/"),
         help="Base URL for the running frontend app.",
     )
 
