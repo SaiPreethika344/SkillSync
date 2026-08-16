@@ -48,7 +48,11 @@ public class ResumeAnalysisService {
     private String extractText(MultipartFile file) {
         try (InputStream is = file.getInputStream(); PDDocument document = Loader.loadPDF(is.readAllBytes())) {
             PDFTextStripper stripper = new PDFTextStripper();
-            return stripper.getText(document);
+            String text = stripper.getText(document);
+            System.out.println("[ResumeAnalysisService] extracted text length=" + text.length());
+            System.out.println("[ResumeAnalysisService] extracted text preview: "
+                    + text.substring(0, Math.min(300, text.length())));
+            return text;
         } catch (Exception ex) {
             throw new IllegalArgumentException("Failed to read PDF content");
         }
@@ -59,13 +63,22 @@ public class ResumeAnalysisService {
             return List.of();
         }
 
-        String normalizedText = text.toLowerCase(Locale.ROOT);
+        // Collapse newlines/multiple spaces into single spaces — PDFTextStripper
+        // often breaks multi-word skills across line wraps (e.g. "data\nanalysis")
+        String normalizedText = text.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+
+        // Also build a whitespace-stripped version, for PDFs that drop spaces
+        // between words entirely (e.g. "dataanalysis")
+        String collapsedText = normalizedText.replaceAll("\\s", "");
+
         Set<String> knownSkills = careerMappingService.getAllKnownSkills();
 
         List<String> found = new ArrayList<>();
         for (String skill : knownSkills) {
             String needle = skill.toLowerCase(Locale.ROOT);
-            if (normalizedText.contains(needle)) {
+            String collapsedNeedle = needle.replaceAll("\\s", "");
+
+            if (normalizedText.contains(needle) || collapsedText.contains(collapsedNeedle)) {
                 found.add(skill);
             }
         }

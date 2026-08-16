@@ -10,16 +10,26 @@ export default function ResultsPage() {
   const [careers, setCareers] = useState([])
   const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [loadError, setLoadError] = useState(null)
   const width = useWindowWidth()
   const isMobile = width < 768
 
   useEffect(() => {
     const token = localStorage.getItem('token')
 
+    // DEBUG: log exactly what arrived from the Analysis page / router state
+    console.log('[ResultsPage] location.state:', location.state)
+
     if (location.state?.results?.careerMatches) {
-      const filtered = location.state.results.careerMatches
-        .filter(c => c.matchPercentage > 0)
+      const raw = location.state.results.careerMatches
+      console.log('[ResultsPage] raw careerMatches from analysis run:', raw)
+
+      // FIX: no longer drop 0% matches — that silently emptied the list
+      // even when the backend returned real (but low-scoring) matches.
+      const filtered = [...raw]
+        .sort((a, b) => (b.matchPercentage ?? 0) - (a.matchPercentage ?? 0))
         .slice(0, 5)
+
       setCareers(filtered)
       setIsLoggedIn(true)
       setLoading(false)
@@ -47,17 +57,28 @@ export default function ResultsPage() {
         setLoading(false)
         return null
       }
+      if (!r.ok) {
+        // FIX: surface non-401 failures instead of pretending it's a login issue
+        throw new Error(`Dashboard request failed: ${r.status} ${r.statusText}`)
+      }
       return r.json()
     })
     .then(dash => {
       if (!dash) return
+      console.log('[ResultsPage] dashboard response:', dash)
       setIsLoggedIn(true)
       if (dash?.topCareerMatches?.length) {
-        setCareers(dash.topCareerMatches.slice(0, 5))
+        const sorted = [...dash.topCareerMatches]
+          .sort((a, b) => (b.matchPercentage ?? 0) - (a.matchPercentage ?? 0))
+          .slice(0, 5)
+        setCareers(sorted)
       }
       setLoading(false)
     })
-    .catch(() => {
+    .catch(err => {
+      // FIX: log the real error instead of silently treating it as logged-out
+      console.error('[ResultsPage] failed to load results:', err)
+      setLoadError(err.message)
       setIsLoggedIn(false)
       setLoading(false)
     })
@@ -80,6 +101,11 @@ export default function ResultsPage() {
           <p style={{color:'#666', fontSize:16}}>
             {!isLoggedIn ? 'Log in to see your personalized career matches.' : 'Here are your top career matches based on your skills.'}
           </p>
+          {loadError && (
+            <p style={{color:'#B91C1C', fontSize:13, marginTop:8}}>
+              Debug: {loadError}
+            </p>
+          )}
         </div>
 
         {/* NOT LOGGED IN */}
