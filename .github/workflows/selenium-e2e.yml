@@ -80,7 +80,7 @@ jobs:
           {
             echo "FRONTEND_DIR=$FRONTEND_DIR"
             echo "FRONTEND_INSTALL_COMMAND=$INSTALL_COMMAND"
-            echo "E2E_BASE_URL=http://${E2E_HOST}:${E2E_PORT}"
+            echo "E2E_BASE_URL=http://${E2E_HOST}:${E2E_PORT}/SkillSync/"
           } >> "$GITHUB_ENV"
 
           echo "Frontend directory: $FRONTEND_DIR"
