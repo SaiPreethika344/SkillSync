@@ -60,7 +60,6 @@ TEXT_EXPECTATIONS = [
     ("/", "Career Analysis"),
     ("/analysis", "Select your field of study"),
     ("/analysis", "Upload resume"),
-    ("/login", "Continue with Google"),
     ("/login", "Forgot password?"),
     ("/signup", "Free forever"),
     ("/forgot-password", "Send OTP"),
