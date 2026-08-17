@@ -62,7 +62,7 @@ public class ChatController {
 
         String userContent = request.getMessage() + " Context: " + request.getContext();
         Map<String, Object> payload = new HashMap<>();
-        payload.put("model", "llama-3.3-70b-versatile");
+        payload.put("model", "openai/gpt-oss-20b");
         payload.put("messages", List.of(
                 Map.of("role", "system", "content", SYSTEM_PROMPT),
                 Map.of("role", "user", "content", userContent)));
