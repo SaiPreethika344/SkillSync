@@ -45,8 +45,12 @@ public class CareerMappingRefreshService {
                         ". Include both technical and soft skills. Return ONLY a JSON array of skill name strings, nothing else. Example: [\"Python\",\"SQL\",\"Communication\"]";
 
                 Map<String, Object> payload = new HashMap<>();
-                payload.put("model", "llama-3.1-8b-instant");
+                // openai/gpt-oss-20b replaces deprecated llama-3.1-8b-instant (decommissioned 2026-08-16)
+                payload.put("model", "openai/gpt-oss-20b");
                 payload.put("max_tokens", 200);
+                // reasoning_format=hidden: openai/gpt-oss-20b is a reasoning model; without this
+                // flag message.content is empty and the answer goes to message.reasoning instead.
+                payload.put("reasoning_format", "hidden");
                 payload.put("messages", List.of(
                         Map.of("role", "user", "content", prompt)
                 ));
@@ -61,8 +65,30 @@ public class CareerMappingRefreshService {
                         .build();
 
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                System.out.println("[CareerMappingRefresh] " + career.getCareerTitle()
+                        + " → HTTP " + response.statusCode());
+                System.out.println("[CareerMappingRefresh] raw body: " + response.body());
+
                 JsonNode root = objectMapper.readTree(response.body());
-                String content = root.path("choices").path(0).path("message").path("content").asText("");
+
+                // Check for API-level error before attempting to parse content
+                JsonNode errorNode = root.path("error");
+                if (!errorNode.isMissingNode()) {
+                    System.err.println("[CareerMappingRefresh] Groq error for "
+                            + career.getCareerTitle() + ": " + errorNode.path("message").asText());
+                    continue;
+                }
+
+                JsonNode messageNode = root.path("choices").path(0).path("message");
+                // Primary: content field (reasoning_format=hidden puts answer here)
+                // Fallback: reasoning field (used when reasoning_format=parsed or omitted)
+                String content = messageNode.path("content").asText("");
+                if (content.isBlank()) {
+                    content = messageNode.path("reasoning").asText("");
+                    if (!content.isBlank()) {
+                        System.out.println("[CareerMappingRefresh] content empty, used reasoning field");
+                    }
+                }
 
                 content = content.trim();
                 if (content.startsWith("[") && content.endsWith("]")) {
@@ -74,13 +100,19 @@ public class CareerMappingRefreshService {
                     }
                     career.setRequiredSkills(skills.toString());
                     careerMappingRepository.save(career);
-                    System.out.println("Updated " + career.getCareerTitle() + " → " + skills);
+                    System.out.println("[CareerMappingRefresh] Updated " + career.getCareerTitle() + " → " + skills);
+                } else {
+                    System.err.println("[CareerMappingRefresh] Unexpected content format for "
+                            + career.getCareerTitle() + ": \"" + content + "\"");
                 }
 
-                Thread.sleep(1000);
+                // 2 s delay between careers to stay within Groq free-tier rate limits
+                // and avoid bleeding rate-limit errors into the shared ChatController quota
+                Thread.sleep(2000);
 
             } catch (Exception e) {
-                System.err.println("Failed to refresh " + career.getCareerTitle() + ": " + e.getMessage());
+                System.err.println("[CareerMappingRefresh] Failed to refresh "
+                        + career.getCareerTitle() + ": " + e.getMessage());
             }
         }
         System.out.println("Weekly career mapping refresh completed.");

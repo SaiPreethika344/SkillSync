@@ -88,10 +88,11 @@ public class ChatController {
                 .build();
 
         try {
+            System.out.println("[ChatController] Groq request body: " + requestBody);
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             String responseBody = response.body();
-            System.out.println("Groq status: " + response.statusCode());
-            System.out.println("Groq response: " + responseBody);
+            System.out.println("[ChatController] Groq HTTP status: " + response.statusCode());
+            System.out.println("[ChatController] Groq raw response: " + responseBody);
 
             if (response.statusCode() == 401) {
                 return ResponseEntity.ok(new ChatResponse(
