@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import okhttp3.Callback;
 import okhttp3.Call;
+import okhttp3.MultipartBody;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -122,6 +123,39 @@ public class ApiClient {
             Log.e(TAG, "Exception while creating analysis request; no network call was enqueued", e);
             throw new RuntimeException("Unable to create analysis request", e);
         }
+    }
+
+    /**
+     * POST /analysis/upload-resume — mirrors web api.js uploadResume():
+     *   const formData = new FormData()
+     *   formData.append('file', file)
+     *   fetch('/analysis/upload-resume', { method:'POST', headers: getAuthHeaders(), body: formData })
+     *
+     * Sends the PDF bytes as multipart/form-data with field name "file",
+     * matching backend @RequestParam("file") MultipartFile.
+     */
+    public void uploadResume(String token, byte[] pdfBytes, String filename, Callback callback) {
+        String url = buildUrl("/analysis/upload-resume");
+        Log.d(TAG, "Building upload-resume request; url=" + url
+                + ", filename=" + filename
+                + ", bytes=" + (pdfBytes != null ? pdfBytes.length : 0));
+
+        RequestBody fileBody = RequestBody.create(
+                pdfBytes != null ? pdfBytes : new byte[0],
+                MediaType.parse("application/pdf"));
+
+        RequestBody multipart = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", filename, fileBody)
+                .build();
+
+        Request.Builder builder = new Request.Builder().url(url);
+        if (token != null && !token.isEmpty()) {
+            builder.header("Authorization", "Bearer " + token);
+        }
+        Request request = builder.post(multipart).build();
+        Log.d(TAG, "Executing upload-resume POST; url=" + request.url());
+        client.newCall(request).enqueue(callback);
     }
 
     public void getDashboard(String token, Callback callback) {

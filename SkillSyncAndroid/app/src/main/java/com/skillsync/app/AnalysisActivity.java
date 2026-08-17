@@ -19,6 +19,8 @@ import androidx.cardview.widget.CardView;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -306,6 +308,67 @@ public class AnalysisActivity extends AppCompatActivity {
         }
 
         setLoading(true);
+
+        // ── Resume mode: read PDF bytes and POST to /analysis/upload-resume ──
+        // Mirrors web api.js uploadResume(): formData.append('file', file)
+        //   → fetch('/analysis/upload-resume', { method:'POST', body: formData })
+        if (currentMode.equals("resume")) {
+            byte[] pdfBytes;
+            try {
+                try (InputStream is = getContentResolver().openInputStream(selectedResumeUri);
+                     ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                    if (is == null) throw new IOException("Cannot open URI: " + selectedResumeUri);
+                    byte[] buf = new byte[8192];
+                    int read;
+                    while ((read = is.read(buf)) != -1) {
+                        baos.write(buf, 0, read);
+                    }
+                    pdfBytes = baos.toByteArray();
+                }
+            } catch (IOException e) {
+                setLoading(false);
+                Toast.makeText(this, "Could not read the selected PDF file.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Derive a clean filename from the URI for the multipart Content-Disposition
+            String filename = selectedResumeUri.getLastPathSegment();
+            if (filename == null || filename.isEmpty()) filename = "resume.pdf";
+            if (!filename.toLowerCase().endsWith(".pdf")) filename += ".pdf";
+
+            final byte[] bytes = pdfBytes;
+            final String name = filename;
+            apiClient.uploadResume(token, bytes, name, new okhttp3.Callback() {
+                @Override
+                public void onFailure(@NonNull okhttp3.Call call, @NonNull java.io.IOException e) {
+                    runOnUiThread(() -> {
+                        setLoading(false);
+                        Toast.makeText(AnalysisActivity.this,
+                                "Resume upload failed. Check your connection.", Toast.LENGTH_SHORT).show();
+                    });
+                }
+
+                @Override
+                public void onResponse(@NonNull okhttp3.Call call, @NonNull okhttp3.Response response)
+                        throws java.io.IOException {
+                    String body = response.body() != null ? response.body().string() : "";
+                    runOnUiThread(() -> {
+                        setLoading(false);
+                        if (response.isSuccessful()) {
+                            Intent intent = new Intent(AnalysisActivity.this, ResultsActivity.class);
+                            intent.putExtra("analysis_json", body);
+                            startActivity(intent);
+                        } else {
+                            String msg = body.isEmpty() ? "Resume analysis failed." : body;
+                            Toast.makeText(AnalysisActivity.this, msg, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
+            });
+            return; // do NOT fall through to skills-mode path
+        }
+
+        // ── Skills mode: build prompt string → POST to /analysis/run (unchanged) ──
         String prompt = buildAnalysisPrompt();
 
         apiClient.analyzeSkills(token, prompt, new okhttp3.Callback() {
