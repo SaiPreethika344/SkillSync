@@ -614,7 +614,7 @@ public class DashboardActivity extends AppCompatActivity {
         );
         titleParams.leftMargin = dp(12);
         title.setLayoutParams(titleParams);
-        title.setText("Develop " + skill);
+        title.setText(skill);
         title.setTextColor(Color.parseColor("#111111"));
         title.setTextSize(13f);
         title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
