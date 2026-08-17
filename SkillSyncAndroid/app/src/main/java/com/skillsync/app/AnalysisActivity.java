@@ -40,41 +40,117 @@ public class AnalysisActivity extends AppCompatActivity {
     private static final LinkedHashMap<String, LinkedHashMap<String, List<String>>> SKILL_CATEGORIES = new LinkedHashMap<>();
 
     static {
+        // ── Engineering & Technology ─────────────────────────────────────────
+        // Source: AnalysisPage.jsx skillCategories['Engineering & Technology']
         LinkedHashMap<String, List<String>> engineering = new LinkedHashMap<>();
-        engineering.put("Programming Languages", Arrays.asList("Python", "Java", "C", "C++", "JavaScript", "Kotlin"));
-        engineering.put("Web Development", Arrays.asList("React", "Node.js", "HTML/CSS", "REST APIs"));
-        engineering.put("Data & AI", Arrays.asList("Machine Learning", "SQL", "Power BI", "NLP"));
-        engineering.put("Core Engineering", Arrays.asList("AutoCAD", "Embedded Systems", "IoT", "Robotics"));
+        engineering.put("Programming Languages", Arrays.asList(
+                "Python", "Java", "C", "C++", "JavaScript", "TypeScript",
+                "R", "MATLAB", "Swift", "Kotlin"));
+        engineering.put("Web Development", Arrays.asList(
+                "React", "Node.js", "HTML/CSS", "Angular", "Vue.js",
+                "Django", "Flask", "REST APIs"));
+        engineering.put("Data & AI", Arrays.asList(
+                "Machine Learning", "Deep Learning", "Data Analysis", "SQL",
+                "Power BI", "Tableau", "OpenCV", "NLP"));
+        engineering.put("Core Engineering", Arrays.asList(
+                "Circuit Design", "AutoCAD", "SolidWorks", "Embedded Systems",
+                "IoT", "Robotics", "VLSI"));
+        engineering.put("Soft Skills", Arrays.asList(
+                "Problem Solving", "Critical Thinking", "Teamwork", "Communication",
+                "Time Management", "Leadership", "Adaptability", "Presentation Skills"));
         SKILL_CATEGORIES.put("Engineering & Technology", engineering);
 
+        // ── Medical & Health Sciences ────────────────────────────────────────
+        // Source: AnalysisPage.jsx skillCategories['Medical & Health Sciences']
         LinkedHashMap<String, List<String>> medical = new LinkedHashMap<>();
-        medical.put("Clinical Skills", Arrays.asList("Patient Assessment", "ECG Reading", "Clinical Diagnosis", "First Aid"));
-        medical.put("Research & Lab", Arrays.asList("Lab Techniques", "Research Methodology", "Medical Writing", "Pathology"));
-        medical.put("Healthcare Tech", Arrays.asList("EHR", "Medical Imaging", "Telemedicine", "Hospital Management"));
+        medical.put("Clinical Skills", Arrays.asList(
+                "Patient Assessment", "ECG Reading", "Clinical Diagnosis",
+                "First Aid", "Pharmacology", "Anatomy"));
+        medical.put("Research & Lab", Arrays.asList(
+                "Lab Techniques", "Research Methodology", "Medical Writing",
+                "Clinical Trials", "Pathology"));
+        medical.put("Healthcare Tech", Arrays.asList(
+                "Electronic Health Records", "Medical Imaging",
+                "Telemedicine", "Hospital Management"));
+        medical.put("Soft Skills", Arrays.asList(
+                "Patient Communication", "Medical Ethics",
+                "Team Collaboration", "Leadership"));
+        medical.put("Professional Skills", Arrays.asList(
+                "Empathy", "Communication", "Critical Thinking", "Teamwork",
+                "Ethics", "Time Management", "Stress Management", "Leadership"));
         SKILL_CATEGORIES.put("Medical & Health Sciences", medical);
 
+        // ── Business & Commerce ──────────────────────────────────────────────
+        // Source: AnalysisPage.jsx skillCategories['Business & Commerce']
         LinkedHashMap<String, List<String>> business = new LinkedHashMap<>();
-        business.put("Finance & Accounting", Arrays.asList("Financial Analysis", "Tally", "GST", "Excel"));
-        business.put("Management", Arrays.asList("Project Management", "Operations", "Supply Chain", "Agile"));
-        business.put("Marketing", Arrays.asList("Digital Marketing", "SEO", "Brand Management", "CRM"));
+        business.put("Finance & Accounting", Arrays.asList(
+                "Financial Analysis", "Tally", "GST", "Auditing",
+                "Taxation", "Cost Accounting", "Excel"));
+        business.put("Management", Arrays.asList(
+                "Project Management", "Operations", "Supply Chain",
+                "Business Strategy", "Agile / Scrum"));
+        business.put("Marketing", Arrays.asList(
+                "Digital Marketing", "SEO", "Content Marketing",
+                "Social Media", "Brand Management", "CRM"));
+        business.put("CA / CS Specific", Arrays.asList(
+                "Company Law", "IFRS", "Internal Audit",
+                "Risk Management", "Financial Reporting"));
+        business.put("Soft Skills", Arrays.asList(
+                "Negotiation", "Communication", "Leadership", "Critical Thinking",
+                "Time Management", "Problem Solving", "Networking", "Presentation Skills"));
         SKILL_CATEGORIES.put("Business & Commerce", business);
 
+        // ── Arts, Design & Media ─────────────────────────────────────────────
+        // Source: AnalysisPage.jsx skillCategories['Arts, Design & Media']
         LinkedHashMap<String, List<String>> arts = new LinkedHashMap<>();
-        arts.put("Design", Arrays.asList("UI/UX Design", "Figma", "Photoshop", "Illustrator"));
-        arts.put("Media", Arrays.asList("Content Writing", "Video Editing", "Copywriting", "Public Relations"));
-        arts.put("Creative Skills", Arrays.asList("Photography", "Animation", "Typography", "Brand Identity"));
+        arts.put("Design", Arrays.asList(
+                "UI/UX Design", "Figma", "Adobe XD", "Photoshop",
+                "Illustrator", "Motion Graphics", "3D Modelling"));
+        arts.put("Media & Communication", Arrays.asList(
+                "Content Writing", "Journalism", "Video Editing",
+                "Public Relations", "Copywriting"));
+        arts.put("Fine Arts", Arrays.asList(
+                "Photography", "Animation", "Illustration",
+                "Typography", "Brand Identity"));
+        arts.put("Performing Arts", Arrays.asList(
+                "Music", "Acting", "Dance", "Scriptwriting", "Event Management"));
+        arts.put("Soft Skills", Arrays.asList(
+                "Creativity", "Communication", "Storytelling", "Collaboration",
+                "Time Management", "Presentation Skills", "Critical Thinking", "Adaptability"));
         SKILL_CATEGORIES.put("Arts, Design & Media", arts);
 
+        // ── Science & Research ───────────────────────────────────────────────
+        // Source: AnalysisPage.jsx skillCategories['Science & Research']
         LinkedHashMap<String, List<String>> science = new LinkedHashMap<>();
-        science.put("Core Sciences", Arrays.asList("Physics", "Chemistry", "Biology", "Microbiology"));
-        science.put("Research Skills", Arrays.asList("Research Methodology", "Statistical Analysis", "SPSS", "Academic Writing"));
-        science.put("Applied Sciences", Arrays.asList("Biotechnology", "Nanotechnology", "Forensic Science", "Astronomy"));
+        science.put("Core Sciences", Arrays.asList(
+                "Physics", "Chemistry", "Biology", "Biochemistry",
+                "Microbiology", "Environmental Science"));
+        science.put("Research Skills", Arrays.asList(
+                "Research Methodology", "Statistical Analysis", "SPSS",
+                "Academic Writing", "Lab Skills"));
+        science.put("Applied Sciences", Arrays.asList(
+                "Biotechnology", "Nanotechnology", "Forensic Science",
+                "Geoscience", "Astronomy"));
+        science.put("Soft Skills", Arrays.asList(
+                "Research Communication", "Critical Thinking", "Teamwork",
+                "Grant Writing", "Presentation Skills", "Time Management", "Problem Solving"));
         SKILL_CATEGORIES.put("Science & Research", science);
 
+        // ── Law & Social Sciences ────────────────────────────────────────────
+        // Source: AnalysisPage.jsx skillCategories['Law & Social Sciences']
         LinkedHashMap<String, List<String>> law = new LinkedHashMap<>();
-        law.put("Legal Skills", Arrays.asList("Contract Law", "Corporate Law", "Legal Research", "Drafting"));
-        law.put("Social Sciences", Arrays.asList("Psychology", "Sociology", "Economics", "Public Policy"));
-        law.put("Communication", Arrays.asList("Public Speaking", "Negotiation", "Debate", "Report Writing"));
+        law.put("Legal Skills", Arrays.asList(
+                "Contract Law", "Corporate Law", "Criminal Law",
+                "Legal Research", "Moot Court", "Drafting"));
+        law.put("Social Sciences", Arrays.asList(
+                "Psychology", "Sociology", "Economics",
+                "Political Science", "Public Policy"));
+        law.put("Communication", Arrays.asList(
+                "Public Speaking", "Negotiation", "Critical Thinking",
+                "Debate", "Report Writing"));
+        law.put("Soft Skills", Arrays.asList(
+                "Argumentation", "Empathy", "Communication", "Critical Thinking",
+                "Leadership", "Time Management", "Ethics", "Negotiation"));
         SKILL_CATEGORIES.put("Law & Social Sciences", law);
     }
 
@@ -424,7 +500,6 @@ public class AnalysisActivity extends AppCompatActivity {
     }
 
     private String buildAnalysisPrompt() {
-        String manualNote = promptInput.getText().toString().trim();
         StringBuilder builder = new StringBuilder();
         if (selectedField != null && !selectedField.isEmpty()) {
             builder.append("Field: ").append(selectedField);
@@ -434,12 +509,6 @@ public class AnalysisActivity extends AppCompatActivity {
                 builder.append("\n");
             }
             builder.append("Skills: ").append(String.join(", ", selectedSkills));
-        }
-        if (!manualNote.isEmpty()) {
-            if (builder.length() > 0) {
-                builder.append("\n");
-            }
-            builder.append(manualNote);
         }
         return builder.toString().trim();
     }

@@ -43,6 +43,12 @@ public class DashboardActivity extends AppCompatActivity {
     private SessionManager sessionManager;
     private ApiClient apiClient;
 
+    // Career selection state — mirrors DashboardPage.jsx selectedCareer useState
+    private JSONArray cachedCareers = null;   // full careers array from /dashboard
+    private int selectedCareerIndex = 0;       // which card is currently selected
+    private TextView metricMatchScoreValue;    // ref to the "Career match score" value TextView
+    private TextView metricMatchScoreSubtitle; // ref to the subtitle under the match score
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,7 +80,7 @@ public class DashboardActivity extends AppCompatActivity {
         FloatingActionButton chatFab = findViewById(R.id.chatFab);
         chatFab.setOnClickListener(v -> toggleChatPanel());
         findViewById(R.id.chatClose).setOnClickListener(v -> toggleChatPanel());
-        findViewById(R.id.chatSendButton).setOnClickListener(v -> sendChatPlaceholder());
+        findViewById(R.id.chatSendButton).setOnClickListener(v -> sendChatMessage());
 
         addBotMessage("Hi " + sessionManager.getUserName() + "! I'm your SkillSync AI career guide. Ask me anything about your roadmap or career path!");
 
@@ -131,22 +137,30 @@ public class DashboardActivity extends AppCompatActivity {
         JSONArray careers = json.optJSONArray("topCareerMatches");
         JSONArray skillStrengths = json.optJSONArray("skillStrengths");
 
-        addMetricCard("Career match score", String.valueOf(json.optInt("topCareerMatchScore", 0)) + "%", careers != null && careers.length() > 0
-                ? careers.optJSONObject(0).optString("careerTitle", "Run an analysis")
-                : "Run an analysis");
-        addMetricCard("Skills identified", String.valueOf(skillStrengths != null ? skillStrengths.length() : 0), "From your analysis");
-        addMetricCard("Roadmap steps", String.valueOf(buildRoadmapSkills(careers).size()), "Suggested focus areas");
+        // isMatchScore=true so we keep a ref for live updates when career card is clicked
+        // mirrors DashboardPage.jsx line 377: selectedCareer?.matchPercentage ?? topCareerMatchScore
+        addMetricCard("Career match score",
+                String.valueOf(json.optInt("topCareerMatchScore", 0)) + "%",
+                careers != null && careers.length() > 0
+                        ? careers.optJSONObject(0).optString("careerTitle", "Run an analysis")
+                        : "Run an analysis",
+                /*isMatchScore=*/true);
+        addMetricCard("Skills identified",
+                String.valueOf(skillStrengths != null ? skillStrengths.length() : 0),
+                "From your analysis",
+                /*isMatchScore=*/false);
+        addMetricCard("Roadmap steps",
+                String.valueOf(buildRoadmapSkills(careers).size()),
+                "Suggested focus areas",
+                /*isMatchScore=*/false);
 
         if (careers == null || careers.length() == 0) {
             addEmptyText(careerMatchesContainer, "No analysis yet. Start a new analysis to see career paths.");
         } else {
-            for (int i = 0; i < careers.length() && i < 5; i++) {
-                JSONObject career = careers.optJSONObject(i);
-                if (career == null) {
-                    continue;
-                }
-                careerMatchesContainer.addView(createCareerMatchCard(career, i == 0));
-            }
+            // Cache careers for click-driven re-renders; default selected = index 0
+            cachedCareers = careers;
+            selectedCareerIndex = 0;
+            renderCareerCards();
         }
 
         if (skillStrengths == null || skillStrengths.length() == 0) {
@@ -176,7 +190,7 @@ public class DashboardActivity extends AppCompatActivity {
         }
     }
 
-    private void addMetricCard(String label, String value, String subtitle) {
+    private void addMetricCard(String label, String value, String subtitle, boolean isMatchScore) {
         CardView card = new CardView(this);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -213,6 +227,155 @@ public class DashboardActivity extends AppCompatActivity {
         content.addView(subtitleView);
         card.addView(content);
         metricsRow.addView(card);
+
+        // Keep refs so career switching can update the match score live
+        // mirrors: DashboardPage.jsx line 377: selectedCareer?.matchPercentage
+        if (isMatchScore) {
+            metricMatchScoreValue    = valueView;
+            metricMatchScoreSubtitle = subtitleView;
+        }
+    }
+
+    /**
+     * Re-renders all career match cards with the correct selected highlight.
+     * Mirrors DashboardPage.jsx careers.map onClick={() => setSelectedCareer(c)).
+     * Source: DashboardPage.jsx lines 403-418.
+     */
+    private void renderCareerCards() {
+        careerMatchesContainer.removeAllViews();
+        if (cachedCareers == null) return;
+        int limit = Math.min(cachedCareers.length(), 5);
+        for (int i = 0; i < limit; i++) {
+            final int idx = i;
+            JSONObject career = cachedCareers.optJSONObject(i);
+            if (career == null) continue;
+            boolean isSelected = (i == selectedCareerIndex);
+            View card = createCareerMatchCard(career, isSelected);
+            card.setOnClickListener(v -> {
+                if (selectedCareerIndex == idx) return; // already selected
+                selectedCareerIndex = idx;
+                // Re-render all cards with new highlight (mirrors setSelectedCareer(c))
+                renderCareerCards();
+                // Update "Career match score" metric card
+                // mirrors DashboardPage.jsx line 377: selectedCareer?.matchPercentage
+                updateSelectedCareerMetric();
+                // Fetch dynamic roadmap for non-top-1 career via /chat
+                // mirrors DashboardPage.jsx useEffect on selectedCareer (lines 163-200)
+                if (idx != 0) {
+                    fetchDynamicRoadmap(career.optString("careerTitle", "your target career"));
+                } else {
+                    // Switching back to top career: restore the static missingSkills roadmap
+                    if (cachedCareers != null) {
+                        Set<String> skills = buildRoadmapSkills(cachedCareers);
+                        roadmapContainer.removeAllViews();
+                        roadmapSummaryText.setText(skills.isEmpty()
+                                ? "Your personalized roadmap will appear after your first analysis."
+                                : skills.size() + " priority skills to develop next");
+                        if (skills.isEmpty()) {
+                            addEmptyText(roadmapContainer, "No roadmap available yet.");
+                        } else {
+                            int index = 1;
+                            for (String skill : skills) {
+                                roadmapContainer.addView(createRoadmapCard(index, skill));
+                                index++;
+                            }
+                        }
+                    }
+                }
+            });
+            careerMatchesContainer.addView(card);
+        }
+    }
+
+    /**
+     * Updates the "Career match score" metric card to reflect the currently selected career.
+     * Mirrors DashboardPage.jsx line 377: selectedCareer?.matchPercentage ?? topCareerMatchScore
+     */
+    private void updateSelectedCareerMetric() {
+        if (cachedCareers == null || metricMatchScoreValue == null) return;
+        JSONObject career = cachedCareers.optJSONObject(selectedCareerIndex);
+        if (career == null) return;
+        metricMatchScoreValue.setText(career.optInt("matchPercentage", 0) + "%");
+        if (metricMatchScoreSubtitle != null) {
+            metricMatchScoreSubtitle.setText(career.optString("careerTitle", "Run an analysis"));
+        }
+    }
+
+    /**
+     * Calls /chat to generate a 6-step learning roadmap for the given career.
+     * Mirrors DashboardPage.jsx useEffect on selectedCareer (lines 163-200):
+     *
+     *   body: {
+     *     message: `Generate a learning roadmap for someone who wants to become a ${careerTitle}.
+     *               Give exactly 6 specific actionable steps numbered 1-6. Format each step as
+     *               just the step title, one per line, no extra text.`,
+     *     context: `Career roadmap for ${careerTitle}`
+     *   }
+     *   response parsing: text.split('\n'), strip leading numbers, filter length > 5, slice(0,6)
+     */
+    private void fetchDynamicRoadmap(String careerTitle) {
+        roadmapContainer.removeAllViews();
+        roadmapSummaryText.setText("Generating roadmap for " + careerTitle + "...");
+        addEmptyText(roadmapContainer, "Loading AI roadmap...");
+
+        String token = sessionManager.getToken();
+        String message = "Generate a learning roadmap for someone who wants to become a "
+                + careerTitle
+                + ". Give exactly 6 specific actionable steps numbered 1-6."
+                + " Format each step as just the step title, one per line, no extra text.";
+        String context = "Career roadmap for " + careerTitle;
+
+        apiClient.postChat(token, message, context, new okhttp3.Callback() {
+            @Override
+            public void onFailure(@NonNull okhttp3.Call call, @NonNull java.io.IOException e) {
+                runOnUiThread(() -> {
+                    roadmapContainer.removeAllViews();
+                    roadmapSummaryText.setText("Could not generate roadmap. Check your connection.");
+                    addEmptyText(roadmapContainer, "Roadmap generation failed.");
+                });
+            }
+
+            @Override
+            public void onResponse(@NonNull okhttp3.Call call, @NonNull okhttp3.Response response)
+                    throws java.io.IOException {
+                String body = response.body() != null ? response.body().string() : "";
+                runOnUiThread(() -> {
+                    roadmapContainer.removeAllViews();
+                    try {
+                        JSONObject json = new JSONObject(body);
+                        // mirrors: data.reply || data.response || data.message
+                        String text = json.optString("reply",
+                                json.optString("response",
+                                        json.optString("message", "")));
+                        // mirrors: text.split('\n')
+                        //   .map(s => s.replace(/^\d+[\.\)]\s*/, '').replace(/\*\*/g,'').trim())
+                        //   .filter(s => s.length > 5).slice(0, 6)
+                        String[] lines = text.split("\n");
+                        int stepIndex = 1;
+                        for (String line : lines) {
+                            String step = line
+                                    .replaceAll("^\\d+[.)]\\s*", "")
+                                    .replace("**", "")
+                                    .trim();
+                            if (step.length() > 5 && stepIndex <= 6) {
+                                roadmapContainer.addView(createRoadmapCard(stepIndex, step));
+                                stepIndex++;
+                            }
+                        }
+                        int count = stepIndex - 1;
+                        roadmapSummaryText.setText(count > 0
+                                ? count + " priority steps for " + careerTitle
+                                : "No roadmap steps returned.");
+                        if (count == 0) {
+                            addEmptyText(roadmapContainer, "Could not parse roadmap steps.");
+                        }
+                    } catch (Exception e) {
+                        roadmapSummaryText.setText("Roadmap generation failed.");
+                        addEmptyText(roadmapContainer, "Unexpected response from server.");
+                    }
+                });
+            }
+        });
     }
 
     private void toggleChatPanel() {
@@ -221,15 +384,69 @@ public class DashboardActivity extends AppCompatActivity {
         chatTooltip.setVisibility(opening ? View.GONE : View.VISIBLE);
     }
 
-    private void sendChatPlaceholder() {
+    /**
+     * Sends a chat message to /chat and displays the AI reply.
+     * Mirrors ChatBot.jsx sendMessage() → fetch('/chat', {message, context}).
+     * Source: frontend/src/components/ChatBot.jsx.
+     *
+     * NOTE: Requires GROQ_API_KEY to be set in the backend terminal session:
+     *   $env:GROQ_API_KEY = "gsk_your_key_here"
+     * This key is NOT persisted automatically — must be re-set each time the backend restarts.
+     * Do NOT commit the key to .env or any tracked file.
+     */
+    private void sendChatMessage() {
         String message = chatInput.getText().toString().trim();
-        if (message.isEmpty()) {
-            return;
-        }
+        if (message.isEmpty()) return;
 
         addChatBubble(message, true);
         chatInput.setText("");
-        addBotMessage("This Android build mirrors the chatbot layout. The backend chat action is not wired in this client yet.");
+
+        // Show a typing indicator while waiting
+        addBotMessage("Thinking...");
+        // We'll replace the last bubble with the real reply
+        final int thinkingBubbleIndex = chatMessagesContainer.getChildCount() - 1;
+
+        String token = sessionManager.getToken();
+        // context mirrors ChatBot.jsx: `Career advisor for ${topCareer}`
+        String topCareer = (cachedCareers != null && cachedCareers.length() > 0)
+                ? cachedCareers.optJSONObject(0).optString("careerTitle", "your target career")
+                : "your target career";
+        String context = "Career advisor for " + topCareer;
+
+        apiClient.postChat(token, message, context, new okhttp3.Callback() {
+            @Override
+            public void onFailure(@NonNull okhttp3.Call call, @NonNull java.io.IOException e) {
+                runOnUiThread(() -> replaceThinkingBubble(thinkingBubbleIndex,
+                        "Could not reach the server. Check your connection and that GROQ_API_KEY is set in the backend terminal."));
+            }
+
+            @Override
+            public void onResponse(@NonNull okhttp3.Call call, @NonNull okhttp3.Response response)
+                    throws java.io.IOException {
+                String body = response.body() != null ? response.body().string() : "";
+                runOnUiThread(() -> {
+                    try {
+                        JSONObject json = new JSONObject(body);
+                        // mirrors ChatBot.jsx: data.reply || data.response || data.message
+                        String reply = json.optString("reply",
+                                json.optString("response",
+                                        json.optString("message", "No response from AI.")));
+                        replaceThinkingBubble(thinkingBubbleIndex, reply);
+                    } catch (Exception e) {
+                        replaceThinkingBubble(thinkingBubbleIndex,
+                                "Error parsing server response.");
+                    }
+                });
+            }
+        });
+    }
+
+    /** Replaces the "Thinking..." placeholder bubble with the actual AI reply. */
+    private void replaceThinkingBubble(int index, String reply) {
+        if (index >= 0 && index < chatMessagesContainer.getChildCount()) {
+            chatMessagesContainer.removeViewAt(index);
+        }
+        addBotMessage(reply);
     }
 
     private void addBotMessage(String message) {

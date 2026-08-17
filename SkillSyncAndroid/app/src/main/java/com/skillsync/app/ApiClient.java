@@ -128,6 +128,27 @@ public class ApiClient {
         getJson("/dashboard", token, callback);
     }
 
+    /**
+     * POST /chat — mirrors DashboardPage.jsx fetch('/chat') calls.
+     * Used for:
+     *   1) roadmap step AI details (RoadmapStep.handleExpand)
+     *   2) dynamic roadmap for non-top career (DashboardPage useEffect on selectedCareer)
+     *   3) chatbot messages (ChatBot component)
+     *
+     * Web body: { message: string, context: string }
+     * Web response field: data.reply || data.response || data.message
+     */
+    public void postChat(String token, String message, String context, Callback callback) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("message", message);
+            body.put("context", context);
+            postJson("/chat", body, token, callback);
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to create chat request", e);
+        }
+    }
+
     private JSONObject buildAnalysisRequest(String input) throws Exception {
         String normalized = input == null ? "" : input.trim();
         String field = "";
