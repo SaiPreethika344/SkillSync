@@ -57,12 +57,13 @@ public class DashboardService {
 
         List<CareerMatchDto> topMatchesRaw = result.getCareerMatches() == null
                 ? List.of()
-                : result.getCareerMatches().stream().limit(4).toList();
+                : result.getCareerMatches().stream().limit(5).toList();
         List<DashboardCareerMatchDto> topCareerMatches = topMatchesRaw.stream()
                 .map(match -> new DashboardCareerMatchDto(
                         match.getCareerTitle(),
                         match.getMatchPercentage(),
-                        match.getDescription()))
+                        match.getDescription(),
+                        match.getMissingSkills()))   // ← was missing: roadmap steps starved
                 .toList();
 
         int topScore = topMatchesRaw.isEmpty() ? 0 : topMatchesRaw.getFirst().getMatchPercentage();

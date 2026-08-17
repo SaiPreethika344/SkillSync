@@ -26,11 +26,12 @@ public class CareerMappingService {
     public List<CareerMatchDto> calculateCareerMatches(List<String> rawSkills, String field) {
         Set<String> normalizedSkills = normalizeSkills(rawSkills);
         List<CareerMatchDto> matches = new ArrayList<>();
-        Map<String, List<String>> careerMap = careerSkillMap();
         List<String> fieldKeywords = getFieldKeywords(field);
 
-        for (Map.Entry<String, List<String>> entry : careerMap.entrySet()) {
-            String career = entry.getKey();
+        // Iterate entities directly so we can set description from the DB row
+        List<CareerMapping> activeMappings = careerMappingRepository.findByIsActiveTrue();
+        for (CareerMapping mapping : activeMappings) {
+            String career = mapping.getCareerTitle();
 
             // Filter by field if provided
             if (field != null && !field.isBlank() && !fieldKeywords.isEmpty()) {
@@ -47,7 +48,10 @@ public class CareerMappingService {
                 }
             }
 
-            List<String> careerSkills = entry.getValue();
+            List<String> careerSkills = parseSkills(mapping.getRequiredSkills());
+            if (careerSkills.isEmpty()) {
+                continue; // skip careers with no required skills to avoid divide-by-zero
+            }
             int matchedCount = 0;
 
             for (String requiredSkill : careerSkills) {
@@ -58,7 +62,9 @@ public class CareerMappingService {
 
             double percent = (double) matchedCount / careerSkills.size() * 100.0;
             CareerMatchDto dto = new CareerMatchDto(career, (int) Math.round(percent));
-            dto.setMissingSkills(getMissingSkillsForCareer(rawSkills, career));
+            // Set description from the DB entity — previously was always empty string
+            dto.setDescription(mapping.getDescription() != null ? mapping.getDescription() : "");
+            dto.setMissingSkills(getMissingSkills(normalizedSkills, careerSkills));
             matches.add(dto);
         }
 
@@ -123,9 +129,14 @@ public class CareerMappingService {
     public List<String> getMissingSkillsForCareer(List<String> rawSkills, String career) {
         List<String> requiredSkills = careerSkillMap().getOrDefault(career, List.of());
         Set<String> normalizedSkills = normalizeSkills(rawSkills);
+        return getMissingSkills(normalizedSkills, requiredSkills);
+    }
+
+    /** Internal helper: returns required skills not present in the already-normalized user skill set. */
+    private List<String> getMissingSkills(Set<String> normalizedUserSkills, List<String> requiredSkills) {
         List<String> missing = new ArrayList<>();
         for (String requiredSkill : requiredSkills) {
-            if (!normalizedSkills.contains(normalizeSkill(requiredSkill))) {
+            if (!normalizedUserSkills.contains(normalizeSkill(requiredSkill))) {
                 missing.add(requiredSkill);
             }
         }

@@ -1,18 +1,22 @@
 package com.skillsync.backend.dto;
 
+import java.util.List;
+
 public class DashboardCareerMatchDto {
 
     private String careerTitle;
     private int matchPercentage;
     private String description;
+    private List<String> missingSkills;
 
     public DashboardCareerMatchDto() {
     }
 
-    public DashboardCareerMatchDto(String careerTitle, int matchPercentage, String description) {
+    public DashboardCareerMatchDto(String careerTitle, int matchPercentage, String description, List<String> missingSkills) {
         this.careerTitle = careerTitle;
         this.matchPercentage = matchPercentage;
         this.description = description;
+        this.missingSkills = missingSkills != null ? missingSkills : List.of();
     }
 
     public String getCareerTitle() {
@@ -37,5 +41,13 @@ public class DashboardCareerMatchDto {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public List<String> getMissingSkills() {
+        return missingSkills;
+    }
+
+    public void setMissingSkills(List<String> missingSkills) {
+        this.missingSkills = missingSkills;
     }
 }
