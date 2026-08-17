@@ -67,6 +67,11 @@ public class ChatController {
                 Map.of("role", "system", "content", SYSTEM_PROMPT),
                 Map.of("role", "user", "content", userContent)));
         payload.put("max_tokens", 200);
+        // openai/gpt-oss-20b is a reasoning model; without this flag, chain-of-thought
+        // runs internally and the final answer is returned in message.reasoning while
+        // message.content comes back empty.  "hidden" suppresses the reasoning trace
+        // and puts the answer in content, matching standard chat completion behaviour.
+        payload.put("reasoning_format", "hidden");
 
         String requestBody;
         try {
@@ -104,8 +109,19 @@ public class ChatController {
                         "AI service error: " + errMsg));
             }
 
-            String reply = root.path("choices").path(0).path("message").path("content").asText("");
+            // Primary: choices[0].message.content (normal completion path)
+            // Fallback: choices[0].message.reasoning (reasoning models with reasoning_format="parsed")
+            JsonNode messageNode = root.path("choices").path(0).path("message");
+            String reply = messageNode.path("content").asText("");
             if (reply.isBlank()) {
+                // Reasoning model fallback: answer may be in the "reasoning" field
+                reply = messageNode.path("reasoning").asText("");
+                if (!reply.isBlank()) {
+                    System.out.println("[ChatController] content was empty, using reasoning field as reply");
+                }
+            }
+            if (reply.isBlank()) {
+                System.err.println("[ChatController] Both content and reasoning fields are empty. Full response: " + responseBody);
                 return ResponseEntity.ok(new ChatResponse(
                         "The AI returned an empty response. Please try again."));
             }
