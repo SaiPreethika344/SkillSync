@@ -50,13 +50,9 @@ exports.config = {
   connectionRetryTimeout: 120000,
   connectionRetryCount: 3,
 
-  services: [
-    ['appium', {
-      command: 'appium',
-      args: { relaxedSecurity: true },
-      logFileName: 'appium.log',
-    }],
-  ],
+  // Appium is started externally in CI (appium & in the workflow script)
+  // wdio connects to it at localhost:4723 — no service needed
+  services: [],
 
   framework: 'mocha',
   reporters: [
