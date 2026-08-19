@@ -1,0 +1,183 @@
+name: Appium Android E2E
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+concurrency:
+  group: appium-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22.x"
+  JAVA_VERSION: "17"
+  API_LEVEL: "34"
+  TARGET: "google_apis"
+  ARCH: "x86_64"
+  APPIUM_REPORT_PATH: appium-tests/reports/appium-test-report.xlsx
+
+jobs:
+  appium:
+    name: Appium Android E2E tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      # ── 1. Checkout ───────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Java (needed for Gradle) ───────────────────────────────
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      # ── 3. Node (for Appium + WebdriverIO) ───────────────────────
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: appium-tests/package-lock.json
+
+      # ── 4. Show environment ───────────────────────────────────────
+      - name: Show environment
+        run: |
+          java -version
+          node --version
+          npm --version
+          echo "Android SDK: $ANDROID_SDK_ROOT"
+
+      # ── 5. Build debug APK ────────────────────────────────────────
+      - name: Build debug APK
+        working-directory: SkillSyncAndroid
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          echo "APK_PATH=$(find . -name 'app-debug.apk' | head -1 | xargs realpath)" >> $GITHUB_ENV
+
+      - name: Verify APK exists
+        run: |
+          echo "APK path: $APK_PATH"
+          ls -lh "$APK_PATH"
+
+      # ── 6. Install Appium test dependencies ──────────────────────
+      - name: Install Appium test dependencies
+        working-directory: appium-tests
+        run: npm ci || npm install
+
+      # ── 7. Install Appium + UiAutomator2 driver ──────────────────
+      - name: Install Appium server
+        run: |
+          npm install -g appium@latest
+          appium --version
+          appium driver install uiautomator2
+          appium driver list
+
+      # ── 8. Create reports directory ───────────────────────────────
+      - name: Create reports directory
+        run: mkdir -p appium-tests/reports
+
+      # ── 9. Run tests inside Android emulator ─────────────────────
+      - name: Run Appium tests on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: ${{ env.TARGET }}
+          arch: ${{ env.ARCH }}
+          profile: pixel_5
+          ram-size: 4096M
+          heap-size: 512M
+          emulator-options: -no-snapshot -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
+          script: |
+            # Wait for emulator to be fully ready
+            adb wait-for-device
+            adb shell input keyevent 82
+
+            # Install APK
+            adb install -r "$APK_PATH"
+            echo "APK installed successfully"
+
+            # Start Appium server in background
+            appium --relaxed-security --log-level warn &
+            APPIUM_PID=$!
+            echo "Appium PID: $APPIUM_PID"
+
+            # Wait for Appium to be ready
+            for i in $(seq 1 30); do
+              if curl -s http://localhost:4723/status | grep -q '"ready"'; then
+                echo "Appium ready after ${i}s"
+                break
+              fi
+              sleep 2
+            done
+
+            # Run WebdriverIO test suite
+            cd appium-tests
+            APK_PATH="$APK_PATH" APPIUM_REPORT_PATH="reports/appium-test-report.xlsx" \
+              npx wdio run wdio.conf.js || true
+
+            # Stop Appium
+            kill $APPIUM_PID 2>/dev/null || true
+
+      # ── 10. Print summary to Actions log ─────────────────────────
+      - name: Print test summary
+        if: always()
+        run: |
+          if [ -f appium-tests/reports/wdio-results.json ]; then
+            node -e "
+              const fs = require('fs');
+              const results = JSON.parse(fs.readFileSync('appium-tests/reports/wdio-results.json', 'utf8'));
+              const passed  = results.filter(r => r.state === 'passed').length;
+              const failed  = results.filter(r => r.state === 'failed').length;
+              const total   = results.length;
+              const pct     = total > 0 ? ((passed/total)*100).toFixed(1) : 0;
+              console.log('');
+              console.log('╔══════════════════════════════════════════╗');
+              console.log(\`║  Appium E2E Results                      ║\`);
+              console.log(\`║  Total : \${String(total).padEnd(32)}║\`);
+              console.log(\`║  Passed: \${String(passed).padEnd(32)}║\`);
+              console.log(\`║  Failed: \${String(failed).padEnd(32)}║\`);
+              console.log(\`║  Rate  : \${String(pct + '%').padEnd(32)}║\`);
+              console.log('╚══════════════════════════════════════════╝');
+            " || echo "Could not parse JSON results"
+          else
+            echo "No JSON results file found — check Appium logs"
+          fi
+
+      # ── 11. Upload Excel report ───────────────────────────────────
+      - name: Upload Appium Excel report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-excel-report
+          path: appium-tests/reports/appium-test-report.xlsx
+          if-no-files-found: warn
+
+      # ── 12. Upload JSON results ───────────────────────────────────
+      - name: Upload JSON results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-json-results
+          path: appium-tests/reports/wdio-results.json
+          if-no-files-found: ignore
+
+      # ── 13. Upload Appium server log ──────────────────────────────
+      - name: Upload Appium log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-server-log
+          path: appium-tests/appium.log
+          if-no-files-found: ignore

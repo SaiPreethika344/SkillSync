@@ -1,0 +1,2 @@
+# Appium test reports are generated here at runtime.
+# The .gitignore excludes *.xlsx and *.json — this file keeps the folder tracked.

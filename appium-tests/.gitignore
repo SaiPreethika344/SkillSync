@@ -1,0 +1,6 @@
+node_modules/
+reports/*.xlsx
+reports/*.json
+appium.log
+*.log
+.wdio-*

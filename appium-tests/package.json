@@ -1,0 +1,27 @@
+{
+  "name": "skillsync-appium-tests",
+  "version": "1.0.0",
+  "description": "Appium E2E tests for SkillSync Android app",
+  "private": true,
+  "scripts": {
+    "test": "wdio run wdio.conf.js",
+    "test:login": "wdio run wdio.conf.js --spec tests/login-tests.js",
+    "test:dashboard": "wdio run wdio.conf.js --spec tests/dashboard-tests.js",
+    "test:roadmap": "wdio run wdio.conf.js --spec tests/roadmap-tests.js",
+    "test:chat": "wdio run wdio.conf.js --spec tests/chat-tests.js",
+    "test:resume": "wdio run wdio.conf.js --spec tests/resume-upload-tests.js"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@wdio/appium-service": "^9.0.0",
+    "@wdio/cli": "^9.0.0",
+    "@wdio/json-reporter": "^9.0.0",
+    "@wdio/local-runner": "^9.0.0",
+    "@wdio/mocha-framework": "^9.0.0",
+    "@wdio/spec-reporter": "^9.0.0",
+    "appium": "^2.11.0",
+    "appium-uiautomator2-driver": "^3.0.0"
+  }
+}
